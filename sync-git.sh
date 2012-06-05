@@ -23,7 +23,7 @@ fi
 # iterate over all repositories in the given path to discover the 
 # git repositories in the given path
 START_TIME=$SECONDS
-echo "|-------> `date`"  >> $LOG_PATH
+echo "--------- `date`"  >> $LOG_PATH
 for FOLDER in $GIT_REPOSITORIES/* ; do
 
     if [ ! -d $FOLDER ]; then
@@ -44,7 +44,7 @@ for FOLDER in $GIT_REPOSITORIES/* ; do
 
 	REMOTE_URI=`git remote -v | grep -E "^origin.*\(fetch\)$" | awk '{print $2;}'` 
 
-    echo "syncing git repository $REMOTE_URI" &>> $LOG_PATH
+    echo ":: syncing git repository $REMOTE_URI" &>> $LOG_PATH
 	git fetch origin &>> $LOG_PATH
 	RETVAL=$?
 	[ $RETVAL -eq 0 ] && logger -p daemon.info fetched successfully from $REMOTE_URI
@@ -72,5 +72,5 @@ for FOLDER in $GIT_REPOSITORIES/* ; do
 done
 
 ELAPSED_TIME=$(($SECONDS - $START_TIME))
-echo "====== sync finished in $ELAPSED_TIME seconds ======" &>> $LOG_PATH
+echo ":: sync finished in $ELAPSED_TIME seconds" &>> $LOG_PATH
 cd $CURRENT_PATH
