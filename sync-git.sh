@@ -4,6 +4,7 @@ LOG_PATH=/var/log/git-sync.log
 CURRENT_PATH=`pwd`
 
 
+
 function error {
 	# send an email to admin and log to /var/log/daemon.*
 	logger -p daemon.err An error occured while syncing the git repositories.
@@ -21,6 +22,8 @@ fi
 
 # iterate over all repositories in the given path to discover the 
 # git repositories in the given path
+START_TIME=$SECONDS
+echo "|-------> `date`"  >> $LOG_PATH
 for FOLDER in $GIT_REPOSITORIES/* ; do
 
     if [ ! -d $FOLDER ]; then
@@ -39,10 +42,9 @@ for FOLDER in $GIT_REPOSITORIES/* ; do
         continue
     fi
 
-	echo `date` >> $LOG_PATH
-	echo "syncing folder $FOLDER" >> $LOG_PATH
 	REMOTE_URI=`git remote -v | grep -E "^origin.*\(fetch\)$" | awk '{print $2;}'` 
-	echo "syncing git repository $REMOTE_URI" &>> $LOG_PATH
+
+    echo "syncing git repository $REMOTE_URI" &>> $LOG_PATH
 	git fetch origin &>> $LOG_PATH
 	RETVAL=$?
 	[ $RETVAL -eq 0 ] && logger -p daemon.info fetched successfully from $REMOTE_URI
@@ -55,17 +57,20 @@ for FOLDER in $GIT_REPOSITORIES/* ; do
 	[ $RETVAL -eq 0 ] && logger -p daemon.info pruned succesfully from $REMOTE_URI
 	[ $RETVAL -ne 0 ] && error
 
-    # now update the refs so that HEAD etc. have the right commits associated
+    # now update the refs so that HEAD and the other branches have the right commits associated
     # from the remote repo
     if [ -e "$FOLDER/refs/remotes/origin" ]; then
-        for SUB in `ls $FOLDER/refs/remotes/origin/` ; do
-            LOCALREF=refs/heads/$SUB
-            REMOTEREF=refs/remotes/origin/$SUB
-            git update-ref $LOCALREF $REMOTEREF
-	        [ $RETVAL -eq 0 ] && logger -p daemon.info synced branch $SUB succesfully
+        ORIGIN=`git remote -v | grep -i origin | grep -i fetch | awk '{print $2}'`
+        for REF in `ls $FOLDER/refs/remotes/origin/` ; do
+            echo "updating ref $REF from origin $ORIGIN" &>> $LOG_PATH 
+            git update-ref refs/heads/$REF refs/remotes/origin/$REF &>> $LOG_PATH
+            RETVAL=$?
+	        [ $RETVAL -eq 0 ] && logger -p daemon.info synced branch $REF succesfully
         	[ $RETVAL -ne 0 ] && error
         done
     fi
 done
 
+ELAPSED_TIME=$(($SECONDS - $START_TIME))
+echo "====== sync finished in $ELAPSED_TIME seconds ======" &>> $LOG_PATH
 cd $CURRENT_PATH
