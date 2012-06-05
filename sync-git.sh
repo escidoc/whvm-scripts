@@ -10,6 +10,15 @@ function error {
 	/bin/echo "An error has occured while syncing the git repositories. Please check the log at ${LOG_PATH} at host ${HOSTNAME}. This is a generated message." | /usr/bin/mail -s "SYNC Error" "eSciDocAdmin@fiz-karlsruhe.de" -- -r "git-sync-cronjob@whvmescidoc4.fiz-kalrsruhe.de"
 }
 
+# check if a valid user is running this script and ask if he knows what he's doing
+if [ "$(id -u)" == 0 ]; then
+    echo -ne "WARNING!\nroot user detected\nAre you sure you want to run this script as the root user [y/n]? "
+    read OVERWRITE
+    if [ !OVERWRITE != "y" ]; then
+        exit 1
+    fi
+fi
+
 # iterate over all repositories in the given path to discover the 
 # git repositories in the given path
 for FOLDER in $GIT_REPOSITORIES/* ; do
@@ -33,7 +42,7 @@ for FOLDER in $GIT_REPOSITORIES/* ; do
 	echo `date` >> $LOG_PATH
 	echo "syncing folder $FOLDER" >> $LOG_PATH
 	REMOTE_URI=`git remote -v | grep -E "^origin.*\(fetch\)$" | awk '{print $2;}'` 
-	echo "syncing git repository $REMOTE_URI"
+	echo "syncing git repository $REMOTE_URI" &>> $LOG_PATH
 	git fetch origin &>> $LOG_PATH
 	RETVAL=$?
 	[ $RETVAL -eq 0 ] && logger -p daemon.info fetched successfully from $REMOTE_URI
@@ -45,6 +54,18 @@ for FOLDER in $GIT_REPOSITORIES/* ; do
 	RETVAL=$?
 	[ $RETVAL -eq 0 ] && logger -p daemon.info pruned succesfully from $REMOTE_URI
 	[ $RETVAL -ne 0 ] && error
+
+    # now update the refs so that HEAD etc. have the right commits associated
+    # from the remote repo
+    if [ -e "$FOLDER/refs/remotes/origin" ]; then
+        for SUB in `ls $FOLDER/refs/remotes/origin/` ; do
+            LOCALREF=refs/heads/$SUB
+            REMOTEREF=refs/remotes/origin/$SUB
+            git update-ref $LOCALREF $REMOTEREF
+	        [ $RETVAL -eq 0 ] && logger -p daemon.info synced branch $SUB succesfully
+        	[ $RETVAL -ne 0 ] && error
+        done
+    fi
 done
 
 cd $CURRENT_PATH
