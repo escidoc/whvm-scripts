@@ -1,8 +1,14 @@
 #!/bin/bash
+
+# This script synchronizes the local git mirror repositories with github
+# It iterates over all the folders in a certain directory (GIT_REPOSITORIES) and tries
+# to establish if it's a git repository. If it is, it starts fetching from the git 
+# remote called "origin" and updates the refs in order to synchronize the HEADS of the
+# local repository.
+
 GIT_REPOSITORIES=/data/git-repositories
 LOG_PATH=/var/log/git-sync.log
 CURRENT_PATH=`pwd`
-
 
 
 function error {
@@ -10,6 +16,7 @@ function error {
 	logger -p daemon.err An error occured while syncing the git repositories.
 	/bin/echo "An error has occured while syncing the git repositories. Please check the log at ${LOG_PATH} at host ${HOSTNAME}. This is a generated message." | /usr/bin/mail -s "SYNC Error" "eSciDocAdmin@fiz-karlsruhe.de" -- -r "git-sync-cronjob@whvmescidoc4.fiz-kalrsruhe.de"
 }
+
 
 # check if a valid user is running this script and ask if he knows what he's doing
 if [ "$(id -u)" == 0 ]; then
@@ -20,12 +27,12 @@ if [ "$(id -u)" == 0 ]; then
     fi
 fi
 
+
 # iterate over all repositories in the given path to discover the 
 # git repositories in the given path
 START_TIME=$SECONDS
 echo "--------- `date`"  >> $LOG_PATH
 for FOLDER in $GIT_REPOSITORIES/* ; do
-
     if [ ! -d $FOLDER ]; then
         echo "skipping regular file $FOLDER"
         continue
@@ -57,18 +64,14 @@ for FOLDER in $GIT_REPOSITORIES/* ; do
 	[ $RETVAL -eq 0 ] && logger -p daemon.info pruned succesfully from $REMOTE_URI
 	[ $RETVAL -ne 0 ] && error
 
-    # now update the refs so that HEAD and the other branches have the right commits associated
-    # from the remote repo
-    if [ -e "$FOLDER/refs/remotes/origin" ]; then
-        ORIGIN=`git remote -v | grep -i origin | grep -i fetch | awk '{print $2}'`
-        for REF in `ls $FOLDER/refs/remotes/origin/` ; do
-            echo "updating ref $REF from origin $ORIGIN" &>> $LOG_PATH 
-            git update-ref refs/heads/$REF refs/remotes/origin/$REF &>> $LOG_PATH
-            RETVAL=$?
-	        [ $RETVAL -eq 0 ] && logger -p daemon.info synced branch $REF succesfully
-        	[ $RETVAL -ne 0 ] && error
-        done
-    fi
+    #iterate over all the tracking branches on origin and update the corresponding refs
+    for BRANCH in `git branch -r | grep -E "^\s*origin\/" | sed "s/^\s*origin\///"` ; do
+        echo "updating refs for branch $BRANCH" &>> $LOG_PATH
+        git update-ref refs/heads/$BRANCH refs/remotes/origin/$BRANCH &>> $LOG_PATH
+	    RETVAL=$?
+    	[ $RETVAL -eq 0 ] && logger -p daemon.info updated branch $BRANCH succesfully from $REMOTE_URI
+	    [ $RETVAL -ne 0 ] && error
+    done
 done
 
 ELAPSED_TIME=$(($SECONDS - $START_TIME))
