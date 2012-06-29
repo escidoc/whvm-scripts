@@ -11,13 +11,14 @@ LOG_PATH=/var/log/git-sync.log
 CURRENT_PATH=`pwd`
 RUN_DIRECTORY=/var/run/sync-git
 JENKINS_URL=http://whvmescidoc5.fiz-karlsruhe.de:8484
+JENKINS_DELAY=300
 
 # use an associative array for storing the maps between git and jenkins project names
 # WARNING: don't use underscores '_' in array names, that got me in trouble!
 declare -A projects 
 
 projects[escidoc-browser]="eSciDocBrowser"
-projects[escidoc-github]="eSciDoc-Core"
+projects[escidoc-core]="eSciDocCore"
 projects[escidoc-metadata-updater]="escidoc-metadata-updater"
 
 function error {
@@ -36,7 +37,7 @@ function trigger_jenkins {
         return
     fi
     echo "triggering build of $PROJECT" >> $LOG_PATH
-    curl -sL -w "Jenkins returned: %{http_code} for  %{url_effective}\\n" "$JENKINS_URL/job/${projects[$PROJECT]}/build?delay=0sec" -o /dev/null &>> $LOG_PATH
+    curl -sL -w "Jenkins returned: %{http_code} for  %{url_effective}\\n" "$JENKINS_URL/job/${projects[$PROJECT]}/build?delay=${JENKINS_DELAY}sec" -o /dev/null &>> $LOG_PATH
 	RETVAL=$?
 	[ $RETVAL -eq 0 ] && logger -p daemon.info triggered build of $PROJECT succesfully
 	[ $RETVAL -ne 0 ] && error "unable to trigger build on $JENKINS_URL for $PROJECT" 
