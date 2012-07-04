@@ -18,8 +18,17 @@ JENKINS_DELAY=300
 declare -A projects 
 
 projects[escidoc-browser]="eSciDocBrowser"
-projects[escidoc-core]="eSciDocCore"
+projects[escidoc-core]="eSciDoc-Core"
+projects[escidoc-core1.3]="eSciDocCore1.3"
+projects[escidoc-core1.4]="eSciDocCore1.4"
 projects[escidoc-metadata-updater]="escidoc-metadata-updater"
+
+# store the branches of the projects which should be build on jenkins when it
+# changed
+declare -A branches
+branches[escidoc-core]="master 1.3 1.4"
+branches[escidoc-browser]="master"
+branches[escidoc-metadata-updater]="master"
 
 function error {
 	# send an email to admin and log to /var/log/daemon.*
@@ -31,13 +40,16 @@ function error {
 
 function trigger_jenkins {
     # trigger the build on the jenkins server
-    PROJECT=`expr match $1 '\([a-zA-Z\-]*\)'`
-    if [ -z ${projects[$PROJECT]} ]; then
-        echo "skipping build of unknown project $PROJECT" &>> $LOG_PATH
+    PROJECT_NAME=${1}
+    if [ ${2} != "master" ]; then
+        PROJECT_NAME=${PROJECT_NAME}${2}
+    fi
+    if [ -z ${projects[$PROJECT_NAME]} ]; then
+        echo "skipping build of unknown project $PROJECT_NAME" &>> $LOG_PATH
         return
     fi
-    echo "triggering build of $PROJECT" >> $LOG_PATH
-    curl -sL -w "Jenkins returned: %{http_code} for  %{url_effective}\\n" "$JENKINS_URL/job/${projects[$PROJECT]}/build?delay=${JENKINS_DELAY}sec" -o /dev/null &>> $LOG_PATH
+    echo "triggering build of $PROJECT_NAME" >> $LOG_PATH
+    curl -sL -w "Jenkins returned: %{http_code} for  %{url_effective}\\n" "$JENKINS_URL/job/${projects[$PROJECT_NAME]}/build?delay=${JENKINS_DELAY}sec" -o /dev/null &>> $LOG_PATH
 	RETVAL=$?
 	[ $RETVAL -eq 0 ] && logger -p daemon.info triggered build of $PROJECT succesfully
 	[ $RETVAL -ne 0 ] && error "unable to trigger build on $JENKINS_URL for $PROJECT" 
@@ -91,27 +103,24 @@ for FOLDER in $GIT_REPOSITORIES/* ; do
 	[ $RETVAL -ne 0 ] && error "unable to prune branches from $REMOTE_URI"
 
     #iterate over all the tracking branches on origin and update the corresponding refs
-    for BRANCH in `git branch -r | grep -E "^\s*origin\/" | sed "s/^\s*origin\///"` ; do
-        echo "updating refs for branch $BRANCH" &>> $LOG_PATH
-        git update-ref refs/heads/$BRANCH refs/remotes/origin/$BRANCH &>> $LOG_PATH
-	    RETVAL=$?
-    	[ $RETVAL -eq 0 ] && logger -p daemon.info updated branch $BRANCH succesfully from $REMOTE_URI
-	    [ $RETVAL -ne 0 ] && error "unable to update refs for $BRANCH from $REMOTE_URI"
+    #for BRANCH in `git branch -r | grep -E "^\s*origin\/" | sed "s/^\s*origin\///"` ; do
+    #    echo "updating refs for branch $BRANCH" &>> $LOG_PATH
+    #    git update-ref refs/heads/$BRANCH refs/remotes/origin/$BRANCH &>> $LOG_PATH
+	#    RETVAL=$?
+    # 	[ $RETVAL -eq 0 ] && logger -p daemon.info updated branch $BRANCH succesfully from $REMOTE_URI
+	#    [ $RETVAL -ne 0 ] && error "unable to update refs for $BRANCH from $REMOTE_URI"
+    #done
+
+    #check if the branches have changed in order to be able to trigger a Jenkins rebuild
+    PROJECT=`expr match $REPO_NAME '\([a-zA-Z\-]*\)'`
+    for HEAD in ${branches[$PROJECT]}; do
+        if [ ! -e $RUN_DIRECTORY/${PROJECT}_${HEAD}.head ]; then
+            trigger_jenkins $PROJECT $HEAD
+        elif [ `cat $RUN_DIRECTORY/${PROJECT}_${HEAD}.head` != `git rev-parse refs/heads/$HEAD` ]; then
+            trigger_jenkins $PROJECT $HEAD
+        fi
+        echo `git rev-parse refs/heads/$HEAD` > $RUN_DIRECTORY/${PROJECT}_${HEAD}.head
     done
-
-    #check if the HEAD has changed in order to be able to trigger a Jenkins rebuild
-    if [ ! -e $RUN_DIRECTORY/$REPO_NAME.head ]; then
-        # first time run, so we better trigger a rebuild
-        trigger_jenkins $REPO_NAME 
-    elif [ `cat $RUN_DIRECTORY/$REPO_NAME.head` != `git rev-parse HEAD` ]; then
-        trigger_jenkins $REPO_NAME
-    fi
-
-    #write the SHA1 hash of the HEADS to RUN_DIRECTORY so that they can be compared 
-    #during the next run to establish wether the "master" has changed in order to trigger
-    #jenkins rebuilds
-    echo `git rev-parse HEAD` > $RUN_DIRECTORY/$REPO_NAME.head
-
 done
 
 ELAPSED_TIME=$(($SECONDS - $START_TIME))
