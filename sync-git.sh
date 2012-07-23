@@ -15,13 +15,13 @@ JENKINS_DELAY=300
 
 # use an associative array for storing the maps between git and jenkins project names
 # WARNING: don't use underscores '_' in array names, that got me in trouble!
-#declare -A projects 
+declare -A projects 
 
-#projects[escidoc-browser]="eSciDocBrowser"
-#projects[escidoc-core]="eSciDoc-Core"
-#projects[escidoc-core1.3]="eSciDocCore1.3"
-#projects[escidoc-core1.4]="eSciDocCore1.4"
-#projects[escidoc-metadata-updater]="escidoc-metadata-updater"
+projects[escidoc-browser]="eSciDocBrowser"
+projects[escidoc-core]="eSciDocCoreTrunk"
+projects[escidoc-core1.3]="eSciDocCore1.3"
+projects[escidoc-core1.4]="eSciDocCore1.4"
+projects[escidoc-metadata-updater]="escidoc-metadata-updater"
 
 # store the branches of the projects which should be build on jenkins when it
 # changed
@@ -44,10 +44,10 @@ function trigger_jenkins {
     if [ ${2} != "master" ]; then
         PROJECT_NAME=${PROJECT_NAME}${2}
     fi
-#    if [ -z ${projects[$PROJECT_NAME]} ]; then
-#        echo "skipping build of unknown project $PROJECT_NAME" &>> $LOG_PATH
-#        return
-#    fi
+    if [ -z ${projects[$PROJECT_NAME]} ]; then
+        echo "skipping build of unknown project $PROJECT_NAME" &>> $LOG_PATH
+        return
+    fi
     echo "triggering build of $PROJECT_NAME" >> $LOG_PATH
     curl -sL -w "Jenkins returned: %{http_code} for  %{url_effective}\\n" "$JENKINS_URL/job/${projects[$PROJECT_NAME]}/build?delay=${JENKINS_DELAY}sec" -o /dev/null &>> $LOG_PATH
 	RETVAL=$?
