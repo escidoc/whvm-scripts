@@ -90,7 +90,7 @@ for FOLDER in $GIT_REPOSITORIES/* ; do
 	REMOTE_URI=`git remote -v | grep -E "^origin.*\(fetch\)$" | awk '{print $2;}'` 
 
     echo ":: syncing git repository $REMOTE_URI" &>> $LOG_PATH
-	git fetch origin &>> $LOG_PATH
+	git fetch --all origin &>> $LOG_PATH
 	RETVAL=$?
 	[ $RETVAL -eq 0 ] && logger -p daemon.info fetched successfully from $REMOTE_URI
 	[ $RETVAL -ne 0 ] && error "unable to fetch from $REMOTE_URI"
