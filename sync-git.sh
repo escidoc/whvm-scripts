@@ -10,7 +10,7 @@ GIT_REPOSITORIES=/data/git-repositories
 LOG_PATH=/var/log/git-sync.log
 CURRENT_PATH=`pwd`
 RUN_DIRECTORY=/var/run/sync-git
-JENKINS_URL=http://whvmescidoc5.fiz-karlsruhe.de:8484
+JENKINS_URL=http://whvmescidoc5.fiz-karlsruhe.de:8484/jenkins
 JENKINS_DELAY=300
 
 # use an associative array for storing the maps between git and jenkins project names
