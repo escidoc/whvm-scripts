@@ -23,6 +23,7 @@ projects[escidoc-core1.3]="eSciDocCore1.3"
 projects[escidoc-core1.4]="eSciDocCore1.4"
 projects[escidoc-metadata-updater]="escidoc-metadata-updater"
 projects[ddb-next]="ddb-next"
+projects[ddb-registration]="ddb-registration"
 projects[apd]="apd"
 
 # store the branches of the projects which should be build on jenkins when it
@@ -31,7 +32,8 @@ declare -A branches
 branches[escidoc-core]="master 1.3 1.4"
 branches[escidoc-browser]="master"
 branches[escidoc-metadata-updater]="master"
-branches[ddb-next]="develop"
+branches[ddb-next]="master develop"
+branches[ddb-registration]="develop"
 branches[apd]="develop"
 
 function error {
