@@ -26,6 +26,8 @@ projects[ddb-common]="ddb-common"
 projects[ddb-next]="ddb-next"
 projects[ddb-registration]="ddb-registration"
 projects[apd]="apd"
+projects[escidoc-ng]="escidoc-ng"
+projects[iais]="iais"
 
 # store the branches of the projects which should be build on jenkins when it
 # changed
@@ -37,6 +39,8 @@ branches[ddb-common]="master develop"
 branches[ddb-next]="master develop"
 branches[ddb-registration]="develop"
 branches[apd]="develop"
+branches[escidoc-ng]="master"
+branches[iais]="develop"
 
 function error {
 	# send an email to admin and log to /var/log/daemon.*
