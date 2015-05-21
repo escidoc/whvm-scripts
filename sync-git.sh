@@ -28,6 +28,7 @@ projects[ddb-registration]="ddb-registration"
 projects[apd]="apd"
 projects[escidoc-ng]="escidoc-ng"
 projects[iais]="iais"
+projects[apd-selenium]="apd-selenium"
 
 # store the branches of the projects which should be build on jenkins when it
 # changed
@@ -41,6 +42,7 @@ branches[ddb-registration]="develop"
 branches[apd]="develop"
 branches[escidoc-ng]="master"
 branches[iais]="develop"
+branches[apd-selenium]="master"
 
 function error {
 	# send an email to admin and log to /var/log/daemon.*
